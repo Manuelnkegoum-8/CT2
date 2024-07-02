@@ -18,7 +18,7 @@ class ColorAttention(nn.Module):
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
         self.norm = nn.LayerNorm(embed_dim)
-        self.tau = nn.Parameter(torch.sqrt(torch.tensor(self.head_dim)))
+        self.tau = torch.sqrt(torch.tensor(self.head_dim))
         self.qkv_proj = nn.Linear(embed_dim, 3*embed_dim,bias = False)
         self.o_proj = nn.Linear(embed_dim, embed_dim)
 
@@ -47,7 +47,7 @@ class ColorAttention(nn.Module):
         full_mask = torch.full((bs,n1,n1),1.).to(mask.device)
         full_mask[:,:seq_len,seq_len:] = mask_
         full_mask[:,seq_len:,:seq_len] = mask_.transpose(1,2)
-        return torch.where(full_mask==1, 0, torch.tensor(float('-inf')))
+        return torch.where(full_mask==0, torch.tensor(float('-inf')), 0)
     
     def forward(self,x,colors,mask):
         bs,seq_len,_ = x.size()
@@ -56,7 +56,7 @@ class ColorAttention(nn.Module):
         qkv = self.qkv_proj(inputs).chunk(3, dim = -1)
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.num_heads), qkv)
         attention_scores = torch.matmul(q, k.transpose(-1, -2)) / self.tau
-        attention_scores = self._masked_softmax(attention_scores, attn_mask)
+        attention_scores = self._masked_softmax(attention_scores,attn_mask)
         attention_output = torch.matmul(attention_scores, v)
         attention_output = rearrange(attention_output, 'b h n d -> b n (h d)')
         return self.o_proj(attention_output)
@@ -89,8 +89,10 @@ class ColorTransformer(nn.Module):
         super().__init__()
         self.block = nn.ModuleList()
         self.patch_tokens_in = Rearrange("b (h w) c -> b h w c", h = height//patch_size, w = width//patch_size)
+        self.patch_tokens_out = Rearrange("b h w c -> b (h w) c", h = height//patch_size, w = width//patch_size)
         self.conv = nn.Conv2d(in_channels=embed_dim,out_channels=embed_dim,kernel_size=3,padding=1)
         self.linear = nn.Linear(embed_dim,embed_dim)
+        self.norm = nn.LayerNorm(embed_dim)
         for _ in range(depth):
             layer = ColorTransformerLayer(embed_dim=embed_dim,
                                         ff_hidden_dim=ff_hidden_dim,
@@ -104,7 +106,13 @@ class ColorTransformer(nn.Module):
             x,colors = layer(x,colors,masks)
         x = self.patch_tokens_in(x).permute(0,3,1,2)
         x = self.conv(x).permute(0,2,3,1)
+        x = self.patch_tokens_out(x)
         colors = self.linear(colors)
+        seq_len = x.size(1)
+        out = torch.cat((x, colors), dim=1)
+        out = self.norm(out)
+        x,colors = out[:,:seq_len], out[:,seq_len:]
+        x = self.patch_tokens_in(x)
         return x,colors
 
 
@@ -114,9 +122,9 @@ class UpsamplingBlock(nn.Module):
         self.up = nn.Sequential(
                 nn.Conv2d(in_channels=dim,out_channels=dim,kernel_size=3,padding=1),
                 nn.BatchNorm2d(dim),
-                nn.ReLU(),
+                nn.ReLU(True),
                 nn.ConvTranspose2d(in_channels=dim,out_channels=dim,kernel_size=4,padding=1,stride=2),
-                nn.ReLU()
+                nn.ReLU(True)
         )
 
     def forward(self, x):
@@ -151,19 +159,19 @@ class Decoder(nn.Module):
                                                   patch_size=patch_size,
                                                   num_heads=num_heads,
                                                   depth=depth)
+        self.norm = nn.LayerNorm(313)
         self.upsampler = Upsampling(dim=embed_dim,num_upsampling=num_upsampling)
-    
     def ColorQuery(self,x,colors,mask):
         # B*h*w*512 x
         # B*313*512 cols
         bs,h,w,dim = x.size()
         mask = mask.contiguous().view(bs,h*w,-1)
-        mask = torch.where(mask==1, 0, torch.tensor(float('-inf')))
+        mask = torch.where(mask==0, torch.tensor(float('-inf')), 0)
         x = x.contiguous().view(bs,-1,dim)
+        
         norm_im = x/x.norm(dim=-1,keepdim=True)
         norm_cols = colors/colors.norm(dim=-1,keepdim=True)
-        attention = norm_im@norm_cols.transpose(1,2) + mask
-        #attention = F.softmax(attention/0.38, dim=-1)
+        attention = self.norm(norm_im@(norm_cols.transpose(1,2))) + mask
         return attention
     
     def forward(self,encoder_out,colors_tokens,mask):
@@ -172,8 +180,4 @@ class Decoder(nn.Module):
         bs,h,w,_ = x.size()
         pred_q = self.ColorQuery(x,cols,mask) #x*313
         pred_q = pred_q.contiguous().view(bs,h,w,-1).permute(0,3,1,2)
-        """bs,_,h,w = im_L.size()
-        tensor_q_ab = torch.from_numpy(q_ab).to(x.device).unsqueeze(0).expand(bs,-1,-1)
-        pred_ab = (pred_q@tensor_q_ab).contiguous().view(bs,h,w,-1).permute(0,3,1,2)
-        final_img = torch.cat((im_L,pred_ab),dim=1) # B*3*h*w"""
-        return pred_q#,pred_ab,final_img
+        return pred_q
