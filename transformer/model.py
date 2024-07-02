@@ -18,7 +18,8 @@ class GetClassWeights:
         self.weights = 1 / ((1 - lambda_) * prior + lambda_ * uniform)
         self.weights /= torch.sum(prior * self.weights)
     def __call__(self, ab_actual):
-        return self.weights[ab_actual.argmax(dim=1, keepdim=True)].to(ab_actual.device)
+        weights = self.weights.to(ab_actual.device)
+        return weights[ab_actual.argmax(dim=1, keepdim=True)]
     
 class RebalanceLoss(Function):
     @staticmethod
@@ -47,10 +48,11 @@ def encode(gt_ab,sigma,neighbours,q_ab,bins): # to define to get soft encoded la
         Returns:
         - Iq: tensor (bs,313,H,W) containing the normalized soft labels.
         """
-        q_ab = torch.from_numpy(q_ab).to(gt_ab.device)
+        
         sigma = sigma
         bs,_,H,W = gt_ab.size()
         Iab = gt_ab.permute(1,0,2,3).reshape(2,-1)
+        q_ab = torch.from_numpy(q_ab).to(gt_ab.device).type(Iab.dtype)
         # Compute pairwise distances between Iab and quantized_ab
         distances = torch.cdist(q_ab,Iab.t())
         # Get the 5-nearest neighbors and their distances
@@ -124,8 +126,8 @@ class CT2(nn.Module):
                                   width_patch=width//patch_size,
                                   dim=dim,
                                   color=None)
-        self.color_cpn = CondPositional(height_patch=22,
-                                  width_patch=22,
+        self.color_cpn = CondPositional(height_patch=23,
+                                  width_patch=23,
                                   dim=dim,
                                   color=q_ab)
         
@@ -141,11 +143,10 @@ class CT2(nn.Module):
             img = img_L.repeat(1,3,1,1)
         else:
             img = img_L.clone()
-        encoder_out = self.encoder((img-50.)/100.)[:,1:,:] #B*N*dim exclude cls
+        encoder_out = self.encoder((img/100.))[:,1:,:] #B*N*dim exclude cls
         encoder_out = self.Cpn(encoder_out)
         colors_tokens = self.colors_tokens.expand(encoder_out.size(0),-1,-1)
-        colors_tokens = self.color_cpn(colors_tokens,22,22)
-        #pred_q,pred_ab,final_img  = self.decoder(encoder_out,colors_tokens,mask,self.q_ab,img_L)
+        colors_tokens = self.color_cpn(colors_tokens,23,23)
         pred_q  = self.decoder(encoder_out,colors_tokens,mask)
         if img_ab is not None:
             soft_labels = encode(img_ab,self.sigma,self.neighbours,self.q_ab,self.bins)
