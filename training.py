@@ -53,10 +53,10 @@ parser.add_argument('--upsample', default=4, type=int, help='num_upsampling bloc
 
 
 # Optimization hyperparams
-parser.add_argument('--epochs', default=20, type=int, metavar='N', help='number of total epochs to run')
+parser.add_argument('--epochs', default=10, type=int, metavar='N', help='number of total epochs to run')
 parser.add_argument('--warmup', default=5, type=int, metavar='N', help='number of warmup epochs')
-parser.add_argument('-b', '--batch_size', default=1, type=int, metavar='N', help='mini-batch size (default: 128)', dest='batch_size')
-parser.add_argument('--lr', default=0.01, type=float, help='initial learning rate')
+parser.add_argument('-b', '--batch_size', default=4, type=int, metavar='N', help='mini-batch size (default: 128)', dest='batch_size')
+parser.add_argument('--lr', default=0.001, type=float, help='initial learning rate')
 parser.add_argument('--weight_decay', default=5e-4, type=float, help='weight decay (default: 1e-4)')
 parser.add_argument('--beta', default=1., type=float, help='beta value for l1 smooth loss')
 parser.add_argument('--weight_l1', default=10., type=float, help='weight for smooth l1 loss')
@@ -150,7 +150,8 @@ if __name__ == '__main__':
     )
     
     model = model.to(device)
-    optimizer = torch.optim.SGD(model.parameters(),lr=lr,momentum=0.9,weight_decay = weight_decay)
+    optimizer = torch.optim.SGD(model.parameters(),lr=lr,momentum=0.9)
+    #optimizer = torch.optim.AdamW(model.parameters(),lr=lr)
     num_epochs = args.epochs
     scheduler = lr_schedule.PolynomialLR(optimizer)
     criterion = nn.SmoothL1Loss(beta=beta_l1)
@@ -163,7 +164,7 @@ if __name__ == '__main__':
     torch.autograd.set_detect_anomaly(True)
 
     if args.resume:
-        checkpoint = torch.load('ct2.pt')
+        checkpoint = torch.load('ct1.pt')
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         scheduler.load_state_dict(checkpoint['scheduler'])
@@ -172,15 +173,14 @@ if __name__ == '__main__':
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
     print(f"Trainable parameters: {trainable_params}")
-    print(Fore.LIGHTGREEN_EX+'='*100)
+    print(Fore.LIGHTGREEN_EX+'='*80)
     print("[INFO] Begin training for {0} epochs".format(num_epochs))
-    print('='*100+Style.RESET_ALL)
+    print('='*80+Style.RESET_ALL)
     print(device)
     for epoch in range(num_epochs):
         train_loss = train_epoch(model,train_loader,optimizer,weight_l1,criterion,device)
         valid_loss = validate(model,val_loader,weight_l1,criterion,device)
         scheduler.step()
-        torch.cuda.empty_cache()
         print(f"Epoch: {epoch+1}, Train Loss: {train_loss}, Val Loss: {valid_loss}")
         if valid_loss < best_loss:
             best_loss = valid_loss
@@ -189,7 +189,7 @@ if __name__ == '__main__':
                     'epoch': epoch,
                     'optimizer_state_dict': optimizer.state_dict(),
                     'scheduler': scheduler.state_dict(),
-                }, f"ct2.pt")
+                }, f"ct1.pt")
 
     print(Fore.GREEN+'='*100)
     print("[INFO] End training")
