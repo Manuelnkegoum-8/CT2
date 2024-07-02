@@ -49,6 +49,7 @@ parser.add_argument('--weight_decay', default=5e-4, type=float, help='weight dec
 parser.add_argument('--beta', default=1., type=float, help='beta value for l1 smooth loss')
 parser.add_argument('--weight_l1', default=10., type=float, help='weight for smooth l1 loss')
 parser.add_argument('--resume', default=False, help='Version')
+import torch.nn.functional as F
 
 args = parser.parse_args()
 data_location = args.data_path
@@ -108,7 +109,7 @@ model = CT2(
             weight_l1=weight_l1,
 
     )
-state_dict = torch.load('ct2.pt',map_location='cpu')
+state_dict = torch.load('ct1.pt',map_location='cpu')
 model.load_state_dict(state_dict['model_state_dict'])
 model = model.to(device)
 model.eval()
@@ -128,7 +129,7 @@ for key in range(101):
             break
 mask_L = mask_L.astype(np.float32)
 def lab_to_rgb(img):
-    return 255*np.clip(color.lab2rgb(img),0,1).astype(np.uint8)
+    return (255*np.clip(color.lab2rgb(img),0,1)).astype(np.uint8)
 @torch.no_grad()
 def predict(img):
     img = Image.fromarray(img)
@@ -150,7 +151,9 @@ def predict(img):
     img_L = torch.from_numpy(img[:,:,0]).type(torch.float32).unsqueeze(0).unsqueeze(0).to(device)
     pp,_,_,res = model(img_L,None,mask,False)
     out = res[0].permute(1,2,0).detach().cpu().numpy()
-    return color.lab2rgb(out)
+    B,C,h,w = pp.size()
+    pp = F.softmax(pp.permute(0,2,3,1).view(-1,C),dim=-1)
+    return lab_to_rgb(out)
     
 with gr.Blocks() as demo:
     gr.Markdown(f"Colorization")
