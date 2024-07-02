@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 from torch.utils.data import Dataset
 from torchvision import datasets
@@ -67,7 +68,7 @@ class COCODataset(Dataset):
         if self.split == 'train':
             img_transform = transforms.Compose([
                 transforms.Resize((self.image_size,self.image_size)),
-                transforms.RandomHorizontalFlip(),
+                #transforms.RandomHorizontalFlip(),
             ])
         else:
             img_transform = transforms.Compose([
@@ -99,7 +100,6 @@ class COCODataset(Dataset):
         mask = torch.from_numpy(mask_p_c)
         img_l = self.numpy_to_torch(l_resized)
         img_ab = self.numpy_to_torch(ab_resized)
-
         return img_l, img_ab, mask
 
     def __len__(self):
