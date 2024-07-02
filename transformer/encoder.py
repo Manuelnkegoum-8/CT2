@@ -44,7 +44,7 @@ class LocallySelfAttention(nn.Module):
         self.value  = nn.Linear(embed_dim, embed_dim,bias = True)
         self.o_proj = nn.Linear(embed_dim, embed_dim)
 
-        self._reset_parameters()
+        #self._reset_parameters()
 
     def _reset_parameters(self):
         # Original Transformer initialization, see PyTorch documentation
