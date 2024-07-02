@@ -34,7 +34,6 @@ class ABGamut:
     def __init__(self):
         self.points = np.load(self.RESOURCE_POINTS, allow_pickle=True).astype(self.DTYPE)
         self.prior = np.load(self.RESOURCE_PRIOR, allow_pickle=True).astype(self.DTYPE)
-
         assert self.points.shape == (self.EXPECTED_SIZE, 2)
         assert self.prior.shape == (self.EXPECTED_SIZE,)
 
@@ -245,10 +244,10 @@ class AnnealedMeanDecodeQ:
         else:
             q = self._annealed_softmax(q)
 
-            """a = self._annealed_mean(q, 0)
+            a = self._annealed_mean(q, 0)
             b = self._annealed_mean(q, 1)
-            ab = torch.cat((a, b), dim=1)"""
-            ab = (q@self.q_to_ab).permute(0,3,1,2)
+            ab = torch.cat((a, b), dim=1)
+            #ab = (q@self.q_to_ab).permute(0,3,1,2)
         return ab.type(q.dtype)
 
     def _mode(self, q):
@@ -268,9 +267,8 @@ class AnnealedMeanDecodeQ:
         return ab
 
     def _annealed_softmax(self, q):
-        
-        q = q.permute(0,2,3,1)
-        return torch.nn.functional.softmax(q / self.T, dim=-1)
+        #q = q.permute(0,2,3,1)
+        return torch.nn.functional.softmax(q / self.T, dim=1)
 
     def _annealed_mean(self, q, d):
         am = torch.tensordot(q, self.q_to_ab[:, d], dims=((1,), (0,)))
