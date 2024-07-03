@@ -94,7 +94,7 @@ class COCODataset(Dataset):
                 mask_p_c[index_l1, :] = self.mask_L[l_range, :]
             else:
                 mask_p_c[index_l1, :] = self.random_mask_L[l_range, :]
-
+        
         mask = torch.from_numpy(mask_p_c)
         img_l = self.numpy_to_torch(l_resized)
         img_ab = self.numpy_to_torch(ab_resized)
