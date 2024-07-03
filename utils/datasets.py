@@ -68,7 +68,7 @@ class COCODataset(Dataset):
         if self.split == 'train':
             img_transform = transforms.Compose([
                 transforms.Resize((self.image_size,self.image_size)),
-                #transforms.RandomHorizontalFlip(),
+                transforms.RandomHorizontalFlip(),
             ])
         else:
             img_transform = transforms.Compose([
@@ -79,7 +79,6 @@ class COCODataset(Dataset):
 
         l_resized = self.rgb_to_lab(img_resized)[:, :, :1]
         ab_resized = self.rgb_to_lab(img_resized)[:, :, 1:]     # np.float32
-        mask = torch.ones(1)
         
         original_l = l_resized[:, :, 0]
         l = original_l.reshape((self.image_size * self.image_size))
@@ -96,7 +95,6 @@ class COCODataset(Dataset):
             else:
                 mask_p_c[index_l1, :] = self.random_mask_L[l_range, :]
 
-        mask_p_c = mask_p_c.reshape((self.image_size,self.image_size,self.n_cls))
         mask = torch.from_numpy(mask_p_c)
         img_l = self.numpy_to_torch(l_resized)
         img_ab = self.numpy_to_torch(ab_resized)
