@@ -235,19 +235,20 @@ class AnnealedMeanDecodeQ:
 
         self.T = T
 
-    def __call__(self, q):
+    def __call__(self, q, is_actual=False, appli=False):
         if self.T == 0:
             # makeing this a special case is somewhat ugly but I have found
             # no way to make this a special case of the branch below (in
             # NumPy that would be trivial)
             ab = self._unbin(self._mode(q))
         else:
-            q = self._annealed_softmax(q)
+            if is_actual is False:
+                q = self._annealed_softmax(q, appli=appli)
 
             a = self._annealed_mean(q, 0)
             b = self._annealed_mean(q, 1)
             ab = torch.cat((a, b), dim=1)
-            #ab = (q@self.q_to_ab).permute(0,3,1,2)
+
         return ab.type(q.dtype)
 
     def _mode(self, q):
@@ -266,9 +267,14 @@ class AnnealedMeanDecodeQ:
 
         return ab
 
-    def _annealed_softmax(self, q):
-        #q = q.permute(0,2,3,1)
-        return torch.nn.functional.softmax(q / self.T, dim=1)
+    def _annealed_softmax(self, q, appli=False, change_mask=None):
+        q_exp = torch.exp(q / self.T)
+        if not appli:
+            q_softmax = q_exp / q_exp.sum(dim=1, keepdim=True)
+        else:
+            q_softmax = q_exp / q_exp.sum(dim=1, keepdim=True)      # [bs, 313, 256, 256]
+
+        return q_softmax
 
     def _annealed_mean(self, q, d):
         am = torch.tensordot(q, self.q_to_ab[:, d], dims=((1,), (0,)))
