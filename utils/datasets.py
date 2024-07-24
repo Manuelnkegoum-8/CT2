@@ -57,7 +57,7 @@ class COCODataset(Dataset):
         return color.rgb2lab(img).astype(np.float32)
 
     def numpy_to_torch(self, img):
-        tensor = torch.from_numpy(np.moveaxis(img, -1, 0))      # [c, h, w]
+        tensor = torch.from_numpy(img).permute(2,0,1)    # [c, h, w]
         return tensor.type(torch.float32)
 
     def get_img(self, idx):
@@ -79,6 +79,7 @@ class COCODataset(Dataset):
 
         l_resized = self.rgb_to_lab(img_resized)[:, :, :1]
         ab_resized = self.rgb_to_lab(img_resized)[:, :, 1:]     # np.float32
+        mask = torch.ones(1)
         
         original_l = l_resized[:, :, 0]
         l = original_l.reshape((self.image_size * self.image_size))
@@ -94,7 +95,7 @@ class COCODataset(Dataset):
                 mask_p_c[index_l1, :] = self.mask_L[l_range, :]
             else:
                 mask_p_c[index_l1, :] = self.random_mask_L[l_range, :]
-        
+
         mask = torch.from_numpy(mask_p_c)
         img_l = self.numpy_to_torch(l_resized)
         img_ab = self.numpy_to_torch(ab_resized)

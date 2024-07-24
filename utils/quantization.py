@@ -268,11 +268,7 @@ class AnnealedMeanDecodeQ:
         return ab
 
     def _annealed_softmax(self, q, appli=False, change_mask=None):
-        q_exp = torch.exp(q / self.T)
-        if not appli:
-            q_softmax = q_exp / q_exp.sum(dim=1, keepdim=True)
-        else:
-            q_softmax = q_exp / q_exp.sum(dim=1, keepdim=True)      # [bs, 313, 256, 256]
+        q_softmax = torch.nn.functional.softmax(q/self.T,dim=1)   # [bs, 313, 256, 256]
 
         return q_softmax
 

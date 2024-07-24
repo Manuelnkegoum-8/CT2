@@ -27,7 +27,7 @@ class patch_embedding(nn.Module):
         x = x.permute(0,2,3,1).contiguous().view(bs,h*w,dim)
         cls_tokens = repeat(self.class_token, '() n d -> b n d', b = x.size(0))
         x = torch.cat((cls_tokens, x), dim=1)
-        outputs = x + embedding[:,:x.size(1),:]
+        outputs = x + embedding#[:,:x.size(1),:]
         return outputs
         
 class LocallySelfAttention(nn.Module):
@@ -68,10 +68,10 @@ class LocallySelfAttention(nn.Module):
         q = f(self.query(x))
         k = f(self.key(x))
         v = f(self.value(x))
-        attention_scores = torch.matmul(q, k.transpose(-1, -2)) / self.tau
+        attention_scores = torch.matmul(q, k.transpose(-2,-1)) / self.tau
         attention_scores = self._masked_softmax(attention_scores, attn_mask)
         attention_output = torch.matmul(attention_scores, v)
-        attention_output = rearrange(attention_output, 'b h n d -> b n (h d)')
+        attention_output = torch.matmul(attention_scores, v).permute(0,2,1,3).contiguous().view(batch_size,-1,self.embed_dim)
         if need_weights:
             return self.o_proj(attention_output),attention_scores
         return self.o_proj(attention_output),None
@@ -84,7 +84,6 @@ class feedforward(nn.Module):
             nn.GELU(),
             nn.Dropout(p=dropout_rate),
             nn.Linear(ff_hidden_dim, embed_dim),
-            nn.GELU(),
             nn.Dropout(p=dropout_rate),
         )
     def forward(self, x):
@@ -92,7 +91,7 @@ class feedforward(nn.Module):
         return outputs
         
 class Transformer(nn.Module):
-    def __init__(self, embed_dim=3, depth=4, heads=2, ff_hidden_dim=1024, dropout_rate = 0.1):
+    def __init__(self, embed_dim=3, depth=4, heads=2, ff_hidden_dim=1024, dropout_rate = 0.):
         super().__init__()
         self.layers = nn.ModuleList([])
         for _ in range(depth):
@@ -113,7 +112,7 @@ class vit(nn.Module):
     def __init__(self,height=224,width=224,n_channels=3,patch_size=16,dim=512,n_head=2,feed_forward=1024,num_blocks=4):
         super().__init__()
         self.embedding = patch_embedding(height,width,n_channels,patch_size,dim)
-        self.n_patchs = height*width//(patch_size**2)
+        self.n_patchs = height*width//(patch_size**2)+1
         # Create a diagonal attention mask
         self.diag_attn_mask = torch.eye(self.n_patchs, dtype=torch.bool)
         self.transformer_encoder = Transformer(dim,num_blocks,n_head,feed_forward)

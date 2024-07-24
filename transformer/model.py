@@ -49,7 +49,6 @@ def encode(gt_ab,sigma,neighbours,q_ab,bins): # to define to get soft encoded la
         - Iq: tensor (bs,313,H,W) containing the normalized soft labels.
         """
         
-        sigma = sigma
         bs,_,H,W = gt_ab.size()
         Iab = gt_ab.permute(1,0,2,3).reshape(2,-1)
         q_ab = torch.from_numpy(q_ab).to(gt_ab.device).type(Iab.dtype)
@@ -115,7 +114,7 @@ class CT2(nn.Module):
     def __init__(self,encoder,decoder,height=224,width=224,patch_size=16,dim=512,neighbours=5,num_quantized=313,sigma=5.0,q_ab=None,gamma_l1=1.,weight_l1=10.,device=None):
         super().__init__()
         self.encoder = encoder
-        self.decoder = decoder
+        self.decoder = decoder 
         self.sigma = sigma
         self.bins = num_quantized
         self.neighbours = neighbours
@@ -126,28 +125,30 @@ class CT2(nn.Module):
                                   width_patch=width//patch_size,
                                   dim=dim,
                                   color=None)
-        self.color_cpn = CondPositional(height_patch=23,
-                                  width_patch=23,
+        self.color_cpn = CondPositional(height_patch=22,
+                                  width_patch=22,
                                   dim=dim,
                                   color=q_ab)
-        
+         
         self.rebalance_loss = RebalanceLoss.apply
         self.get_class_weights = GetClassWeights(CIELAB(),
                                             lambda_=0.5)
         self.decode_q = AnnealedMeanDecodeQ(CIELAB(),T=0.38,device=device)
 
-
+    def normalize(self,img):
+        return (img-50.)/100.
     def forward(self,img_L,img_ab,mask,training=False):
         #img_L B,1,H,W
         if img_L.size(1)==1:
             img = img_L.repeat(1,3,1,1)
         else:
-            img = img_L.clone()
-        encoder_out = self.encoder((img/100.))[:,1:,:] #B*N*dim exclude cls
+            img = img_L.clone() 
+        img = self.normalize(img)
+        encoder_out = self.encoder(img)[:,1:,:] #B *N*dim exclude cls
         encoder_out = self.Cpn(encoder_out)
         colors_tokens = self.colors_tokens.expand(encoder_out.size(0),-1,-1)
-        colors_tokens = self.color_cpn(colors_tokens,23,23)
-        pred_q  = self.decoder(encoder_out,colors_tokens,mask)
+        colors_tokens = self.color_cpn(colors_tokens,22,22)
+        pred_q,out_ab  = self.decoder(encoder_out,colors_tokens,mask)
         if img_ab is not None:
             soft_labels = encode(img_ab,self.sigma,self.neighbours,self.q_ab,self.bins)
         else:
@@ -157,7 +158,7 @@ class CT2(nn.Module):
             pred_q = self.rebalance_loss(pred_q, color_weights)
         pred_ab = self.decode_q(pred_q)
         final_img = torch.cat((img_L,pred_ab.detach()),dim=1)
-        return pred_q,pred_ab,soft_labels,final_img
+        return pred_q,soft_labels,out_ab,final_img
     
     
 

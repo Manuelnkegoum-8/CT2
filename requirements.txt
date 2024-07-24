@@ -6,9 +6,9 @@ gradio==3.50.2
 matplotlib==3.8.4
 numpy==1.26.4
 pillow==10.3.0
-requests==2.31.0
+#requests==2.31.0
 scikit-image==0.23.2
-torch==2.0.0
-torchvision==0.16.2
+#torch==2.1.2
+torchvision
 tqdm==4.66.2
-transformers==4.35.2
+#transformers==4.35.2
