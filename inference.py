@@ -128,8 +128,11 @@ for key in range(101):
             mask_L[ii, :] += L_dict[key].astype(np.bool_)
             break
 mask_L = mask_L.astype(np.float32)
+
+
 def lab_to_rgb(img):
     return (255*np.clip(color.lab2rgb(img),0,1)).astype(np.uint8)
+
 @torch.no_grad()
 def predict(img):
     img = Image.fromarray(img)
@@ -149,10 +152,8 @@ def predict(img):
     mask_p_c = mask_p_c.reshape((height,width,n_col_tokens))
     mask = torch.from_numpy(mask_p_c).to(device).unsqueeze(0)
     img_L = torch.from_numpy(img[:,:,0]).type(torch.float32).unsqueeze(0).unsqueeze(0).to(device)
-    pp,_,_,res = model(img_L,None,mask,False)
+    _,_,_,res = model(img_L,None,mask,False)
     out = res[0].permute(1,2,0).detach().cpu().numpy()
-    B,C,h,w = pp.size()
-    pp = F.softmax(pp.permute(0,2,3,1).view(-1,C),dim=-1)
     return lab_to_rgb(out)
     
 with gr.Blocks() as demo:

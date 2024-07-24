@@ -88,12 +88,6 @@ else:
     device = torch.device("cpu")
 
 args = parser.parse_args()
-"""print(' ' * 35,end='')
-printf('Parameters')
-printf()
-for k, v in vars(args).items():
-  print(Fore.GREEN+k + ': '+Style.RESET_ALL + str(v))
-printf()"""
 random.seed(args.seed)
 torch.manual_seed(44)
 if __name__ == '__main__':
