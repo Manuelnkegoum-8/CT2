@@ -11,6 +11,9 @@ from utils.datasets import *
 from utils.trainer import *
 from utils.quantization import *
 from torch.utils.data import DataLoader
+from torch.utils.data.distributed import DistributedSampler
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed import init_process_group, destroy_process_group
 import sys
 #import warmup_scheduler
 import torch
@@ -30,7 +33,7 @@ def printf(text='='*80,color=Fore.GREEN):
 parser = argparse.ArgumentParser(description='Image Captioning on Flickr8k quick training script')
 
 # Data args
-parser.add_argument('--data_path', default='./Flick', type=str, help='dataset path')
+parser.add_argument('--data_path', default='./data', type=str, help='dataset path')
 parser.add_argument('-j', '--workers', default=2, type=int, metavar='N', help='number of data loading workers (default: 2)')
 parser.add_argument('--freq', default=10, type=int, metavar='N', help='log frequency (by iteration)')
 
@@ -53,11 +56,11 @@ parser.add_argument('--upsample', default=4, type=int, help='num_upsampling bloc
 
 
 # Optimization hyperparams
-parser.add_argument('--epochs', default=100, type=int, metavar='N', help='number of total epochs to run')
+parser.add_argument('--epochs', default=200, type=int, metavar='N', help='number of total epochs to run')
 parser.add_argument('--warmup', default=5, type=int, metavar='N', help='number of warmup epochs')
-parser.add_argument('-b', '--batch_size', default=4, type=int, metavar='N', help='mini-batch size (default: 128)', dest='batch_size')
+parser.add_argument('-b', '--batch_size', default=2, type=int, metavar='N', help='mini-batch size (default: 128)', dest='batch_size')
 parser.add_argument('--lr', default=0.001, type=float, help='initial learning rate')
-parser.add_argument('--weight_decay', default=5e-4, type=float, help='weight decay (default: 1e-4)')
+parser.add_argument('--weight_decay', default=1e-4, type=float, help='weight decay (default: 1e-4)')
 parser.add_argument('--beta', default=1., type=float, help='beta value for l1 smooth loss')
 parser.add_argument('--weight_l1', default=10., type=float, help='weight for smooth l1 loss')
 parser.add_argument('--resume', default=False, help='Version')
@@ -91,19 +94,26 @@ args = parser.parse_args()
 random.seed(args.seed)
 torch.manual_seed(44)
 if __name__ == '__main__':
-    
-    train_data, val_data = COCODataset(image_size=height,dataset_dir=data_location,split='train'), COCODataset(image_size=height,dataset_dir=data_location,split='val')
+    init_process_group(backend="nccl") 
+    torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
+    local_rank = int(os.environ["LOCAL_RANK"])
+    global_rank = int(os.environ["RANK"])
+    train_data, val_data = COCODataset(image_size=height,dataset_dir=data_location,split='Train'), COCODataset(image_size=height,dataset_dir=data_location,split='Train')
+    train_sampler = DistributedSampler(train_data)
+    val_sampler = DistributedSampler(train_data)
     train_loader = DataLoader(
                     dataset=train_data,
                     batch_size=batch_size,
                     num_workers=args.workers,
-                    shuffle=True,
+                    shuffle=False,
+                    sampler=train_sampler
                     )
     val_loader = DataLoader(
                     dataset=val_data,
                     batch_size=batch_size,
                     num_workers=args.workers,
                     shuffle=False,
+                    sampler=train_sampler
                     )
 
     encoder = vit(height=height,
@@ -117,7 +127,7 @@ if __name__ == '__main__':
                   )
     encoder.from_pretrained('vit_pretrained.bin')
     decoder = Decoder(encoder_dim=dim,
-                        embed_dim=dim,
+                      embed_dim=dim,
                       ff_hidden_dim=dec_feed_forward,
                       height=height,
                       width=width,
@@ -145,10 +155,11 @@ if __name__ == '__main__':
     )
     
     model = model.to(device)
-    optimizer = torch.optim.SGD(model.parameters(),lr=lr,momentum=0.9,nesterov=True)
-    num_epochs = 0
+    model = model.to(local_rank)
+    optimizer = torch.optim.SGD(model.parameters(),lr=0.01,momentum=0.9,nesterov=True)
+    num_epochs = 0 
     final_epoch = args.epochs
-    scheduler = lr_schedule.PolynomialLR(optimizer,total_iters=final_epoch)
+    scheduler = lr_schedule.PolynomialLR(optimizer)
     criterion = nn.SmoothL1Loss(beta=beta_l1)
     weight_l1 = weight_l1
     sigma = sigma
@@ -157,36 +168,42 @@ if __name__ == '__main__':
     # Train the model
     best_loss = float('inf')
     torch.autograd.set_detect_anomaly(True)
-    checkpoint_path = 'ct1.pt'
+    checkpoint_path = 'ct2.pt'
     if  os.path.exists(checkpoint_path):
-        checkpoint = torch.load('ct1.pt')
+        loc = f"cuda:{local_rank}"
+        checkpoint = torch.load('ct2.pt',map_location=loc)
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         scheduler.load_state_dict(checkpoint['scheduler'])
         final_epoch = args.epochs
         num_epochs = checkpoint['epoch']+1
-    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-    print(f"Trainable parameters: {trainable_params}")
-    print(Fore.LIGHTGREEN_EX+'='*80)
-    print("[INFO] Training for {0} epochs".format(final_epoch-num_epochs))
-    print('='*80+Style.RESET_ALL)
 
     
+    model = DDP(model, device_ids=[local_rank])
+    if global_rank == 0 :
+        trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        print(f"\nTrainable parameters: {trainable_params}")
+        print(Fore.LIGHTGREEN_EX+'='*80)
+        print("[INFO] Training for {0} epochs".format(final_epoch-num_epochs))
+        print('='*80+Style.RESET_ALL)
+
+    torch.cuda.synchronize()
     for epoch in range(num_epochs,final_epoch):
         train_loss = train_epoch(model,train_loader,optimizer,weight_l1,criterion,device)
-        scheduler.step()
-        if epoch%10==0:
-            valid_loss = validate(model,val_loader,weight_l1,criterion,device)
-            print(f"Epoch: {epoch+1}, Train Loss: {train_loss}, Val Loss: {valid_loss}")
-            torch.save({
-                        'model_state_dict': model.state_dict(),
-                        'epoch': epoch,
-                        'optimizer_state_dict': optimizer.state_dict(),
-                        'scheduler': scheduler.state_dict(),
-                    }, f"ct1.pt")
-            sys.exit(42)
+        if (epoch+1)%args.freq==0:
+            valid_loss,val_psnr = validate(model,val_loader,weight_l1,criterion,device)
+            torch.cuda.synchronize()
+            print(f"\n[GPU{global_rank}] | Epoch: {epoch+1} | Train Loss: {train_loss} | Val Loss: {valid_loss} | PSNR: {val_psnr}")
+            if local_rank == 0:
+                torch.save({
+                            'model_state_dict': model.module.state_dict(),
+                            'epoch': epoch,
+                            'optimizer_state_dict': optimizer.state_dict(),
+                            'scheduler': scheduler.state_dict(),
+                        }, f"ct2.pt")
 
-    print(Fore.GREEN+'='*100)
-    print("[INFO] End training")
-    print('='*100+Style.RESET_ALL)
+    destroy_process_group()
+    if global_rank == 0 :
+        print(Fore.GREEN+'='*100)
+        print("[INFO] End training")
+        print('='*100+Style.RESET_ALL)

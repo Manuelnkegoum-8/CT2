@@ -109,7 +109,7 @@ model = CT2(
             weight_l1=weight_l1,
 
     )
-state_dict = torch.load('ct1.pt',map_location='cpu')
+state_dict = torch.load('ct2.pt',map_location='cpu')
 model.load_state_dict(state_dict['model_state_dict'])
 model = model.to(device)
 model.eval()
