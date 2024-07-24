@@ -56,9 +56,9 @@ parser.add_argument('--upsample', default=4, type=int, help='num_upsampling bloc
 
 
 # Optimization hyperparams
-parser.add_argument('--epochs', default=200, type=int, metavar='N', help='number of total epochs to run')
+parser.add_argument('--epochs', default=50, type=int, metavar='N', help='number of total epochs to run')
 parser.add_argument('--warmup', default=5, type=int, metavar='N', help='number of warmup epochs')
-parser.add_argument('-b', '--batch_size', default=2, type=int, metavar='N', help='mini-batch size (default: 128)', dest='batch_size')
+parser.add_argument('-b', '--batch_size', default=4, type=int, metavar='N', help='mini-batch size (default: 128)', dest='batch_size')
 parser.add_argument('--lr', default=0.001, type=float, help='initial learning rate')
 parser.add_argument('--weight_decay', default=1e-4, type=float, help='weight decay (default: 1e-4)')
 parser.add_argument('--beta', default=1., type=float, help='beta value for l1 smooth loss')
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
     local_rank = int(os.environ["LOCAL_RANK"])
     global_rank = int(os.environ["RANK"])
-    train_data, val_data = COCODataset(image_size=height,dataset_dir=data_location,split='Train'), COCODataset(image_size=height,dataset_dir=data_location,split='Train')
+    train_data, val_data = COCODataset(image_size=height,dataset_dir=data_location,split='train'), COCODataset(image_size=height,dataset_dir=data_location,split='val')
     train_sampler = DistributedSampler(train_data)
     val_sampler = DistributedSampler(train_data)
     train_loader = DataLoader(
@@ -156,7 +156,7 @@ if __name__ == '__main__':
     
     model = model.to(device)
     model = model.to(local_rank)
-    optimizer = torch.optim.SGD(model.parameters(),lr=0.01,momentum=0.9,nesterov=True)
+    optimizer = torch.optim.SGD(model.parameters(),lr=0.001,momentum=0.9,nesterov=True)
     num_epochs = 0 
     final_epoch = args.epochs
     scheduler = lr_schedule.PolynomialLR(optimizer)
