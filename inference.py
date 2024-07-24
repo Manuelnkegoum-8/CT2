@@ -116,9 +116,13 @@ model.eval()
 img_transform = transforms.Compose([
                 transforms.Resize((height,width)),
             ])
+
 mask_num = 4
+
 fp = open(os.path.join('./', 'mask_prior.pickle'), 'rb')
+
 L_dict = pickle.load(fp)
+
 mask_L = np.zeros((mask_num, 313)).astype(np.bool_)     # [4, 313]
 for key in range(101):
     for ii in range(mask_num):

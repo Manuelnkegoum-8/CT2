@@ -171,7 +171,8 @@ if __name__ == '__main__':
     print(Fore.LIGHTGREEN_EX+'='*80)
     print("[INFO] Training for {0} epochs".format(final_epoch-num_epochs))
     print('='*80+Style.RESET_ALL)
-    print(device)
+
+    
     for epoch in range(num_epochs,final_epoch):
         train_loss = train_epoch(model,train_loader,optimizer,weight_l1,criterion,device)
         scheduler.step()
