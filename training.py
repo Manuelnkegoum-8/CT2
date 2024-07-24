@@ -11,7 +11,7 @@ from utils.datasets import *
 from utils.trainer import *
 from utils.quantization import *
 from torch.utils.data import DataLoader
-
+import sys
 #import warmup_scheduler
 import torch
 
@@ -30,8 +30,8 @@ def printf(text='='*80,color=Fore.GREEN):
 parser = argparse.ArgumentParser(description='Image Captioning on Flickr8k quick training script')
 
 # Data args
-parser.add_argument('--data_path', default='./data', type=str, help='dataset path')
-parser.add_argument('-j', '--workers', default=4, type=int, metavar='N', help='number of data loading workers (default: 4)')
+parser.add_argument('--data_path', default='./Flick', type=str, help='dataset path')
+parser.add_argument('-j', '--workers', default=2, type=int, metavar='N', help='number of data loading workers (default: 2)')
 parser.add_argument('--freq', default=10, type=int, metavar='N', help='log frequency (by iteration)')
 
 # Model parameters
@@ -53,7 +53,7 @@ parser.add_argument('--upsample', default=4, type=int, help='num_upsampling bloc
 
 
 # Optimization hyperparams
-parser.add_argument('--epochs', default=10, type=int, metavar='N', help='number of total epochs to run')
+parser.add_argument('--epochs', default=100, type=int, metavar='N', help='number of total epochs to run')
 parser.add_argument('--warmup', default=5, type=int, metavar='N', help='number of warmup epochs')
 parser.add_argument('-b', '--batch_size', default=4, type=int, metavar='N', help='mini-batch size (default: 128)', dest='batch_size')
 parser.add_argument('--lr', default=0.001, type=float, help='initial learning rate')
@@ -88,12 +88,12 @@ else:
     device = torch.device("cpu")
 
 args = parser.parse_args()
-print(' ' * 35,end='')
+"""print(' ' * 35,end='')
 printf('Parameters')
 printf()
 for k, v in vars(args).items():
   print(Fore.GREEN+k + ': '+Style.RESET_ALL + str(v))
-printf()
+printf()"""
 random.seed(args.seed)
 torch.manual_seed(44)
 if __name__ == '__main__':
@@ -122,7 +122,8 @@ if __name__ == '__main__':
                   num_blocks=enc_depth
                   )
     encoder.from_pretrained('vit_pretrained.bin')
-    decoder = Decoder(embed_dim=dim,
+    decoder = Decoder(encoder_dim=dim,
+                        embed_dim=dim,
                       ff_hidden_dim=dec_feed_forward,
                       height=height,
                       width=width,
@@ -150,10 +151,10 @@ if __name__ == '__main__':
     )
     
     model = model.to(device)
-    optimizer = torch.optim.SGD(model.parameters(),lr=lr,momentum=0.9)
-    #optimizer = torch.optim.AdamW(model.parameters(),lr=lr)
-    num_epochs = args.epochs
-    scheduler = lr_schedule.PolynomialLR(optimizer)
+    optimizer = torch.optim.SGD(model.parameters(),lr=lr,momentum=0.9,nesterov=True)
+    num_epochs = 0
+    final_epoch = args.epochs
+    scheduler = lr_schedule.PolynomialLR(optimizer,total_iters=final_epoch)
     criterion = nn.SmoothL1Loss(beta=beta_l1)
     weight_l1 = weight_l1
     sigma = sigma
@@ -162,34 +163,34 @@ if __name__ == '__main__':
     # Train the model
     best_loss = float('inf')
     torch.autograd.set_detect_anomaly(True)
-
-    if args.resume:
+    checkpoint_path = 'ct1.pt'
+    if  os.path.exists(checkpoint_path):
         checkpoint = torch.load('ct1.pt')
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         scheduler.load_state_dict(checkpoint['scheduler'])
         final_epoch = args.epochs
-        num_epochs = final_epoch - (checkpoint['epoch'] + 1)
+        num_epochs = checkpoint['epoch']+1
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
     print(f"Trainable parameters: {trainable_params}")
     print(Fore.LIGHTGREEN_EX+'='*80)
-    print("[INFO] Begin training for {0} epochs".format(num_epochs))
+    print("[INFO] Training for {0} epochs".format(final_epoch-num_epochs))
     print('='*80+Style.RESET_ALL)
     print(device)
-    for epoch in range(num_epochs):
+    for epoch in range(num_epochs,final_epoch):
         train_loss = train_epoch(model,train_loader,optimizer,weight_l1,criterion,device)
-        valid_loss = validate(model,val_loader,weight_l1,criterion,device)
         scheduler.step()
-        print(f"Epoch: {epoch+1}, Train Loss: {train_loss}, Val Loss: {valid_loss}")
-        if valid_loss < best_loss:
-            best_loss = valid_loss
+        if epoch%10==0:
+            valid_loss = validate(model,val_loader,weight_l1,criterion,device)
+            print(f"Epoch: {epoch+1}, Train Loss: {train_loss}, Val Loss: {valid_loss}")
             torch.save({
-                    'model_state_dict': model.state_dict(),
-                    'epoch': epoch,
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'scheduler': scheduler.state_dict(),
-                }, f"ct1.pt")
+                        'model_state_dict': model.state_dict(),
+                        'epoch': epoch,
+                        'optimizer_state_dict': optimizer.state_dict(),
+                        'scheduler': scheduler.state_dict(),
+                    }, f"ct1.pt")
+            sys.exit(42)
 
     print(Fore.GREEN+'='*100)
     print("[INFO] End training")
