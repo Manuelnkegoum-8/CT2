@@ -8,11 +8,11 @@ import torch.nn.functional as F
 from .encoder import feedforward
 
 
-class ColorAttention(nn.Module):
+class ColorAttention(nn.Module): 
     def __init__(self,embed_dim=512,ff_hidden_dim=1024,dropout_rate = 0.1,patch_size=16,num_heads=8):
         super().__init__()
         self.patch_mask = nn.Sequential(
-            Rearrange("b (h p1) (w p2) c -> b (h w)  (p1 p2) c", p1 = patch_size, p2 = patch_size),
+            Rearrange("b (n p) c -> b n p c", p = patch_size**2),
         )
         self.embed_dim = embed_dim
         self.num_heads = num_heads
@@ -32,8 +32,8 @@ class ColorAttention(nn.Module):
     
 
     def process_mask(self, bs,seq_len,mask):
-        # mask B*h*w*313
-        mask_ = self.patch_mask(mask) # B*n*p2*313
+        # mask B*h*w*313 
+        mask_ = self.patch_mask(mask) # B*n*p2*313 n =number patches
         mask_ = mask_.sum(dim=2) # union of p2 patches B*n*313
         n_cls = mask_.size(-1)
         n1 = seq_len+n_cls
@@ -193,4 +193,4 @@ def init_weights(m):
             nn.init.constant_(m.bias, 0)
     elif isinstance(m, nn.LayerNorm):
         nn.init.constant_(m.bias, 0)
-        nn.init.constant_(m.weight, 1.0)
+        nn.init.constant_(m.weight, 1.)
