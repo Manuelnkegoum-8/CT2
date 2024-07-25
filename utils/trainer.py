@@ -2,6 +2,26 @@ import torch,math
 from tqdm import tqdm
 import torch.nn.functional as F
 
+import numpy as np
+from skimage import color
+
+def lab_to_rgb(img):
+    return (255*np.clip(color.lab2rgb(img),0,1)).astype(np.uint8)
+
+def PSNR(img1,img2):
+    mse = (img1-img2)**2
+    rmse = np.sqrt(np.mean(mse))
+    psnr = 20*np.log10(255./rmse)
+    return psnr
+
+
+def eval_psnr(target_imgs,pred_imgs):
+    psnr = 0.
+    for target,pred in zip(target_imgs,pred_imgs):
+        target = target.permute(1,2,0).detach().cpu().numpy()
+        pred = pred.permute(1,2,0).detach().cpu().numpy()
+        psnr += PSNR(target,pred)
+    return psnr
 
 def compute_loss(preds_q,pred_ab,soft_labels,img_ab,weight_l1=10.,criterion=None):
         
@@ -35,7 +55,6 @@ def train_epoch(model,dataloader,optimizer,weight_l1,criterion,device):
             optimizer.zero_grad()
             loss.backward() 
             optimizer.step()
-            
             tepoch.set_postfix(loss=loss.item())
             avg_loss+=loss.item()*bs
             k+=bs
@@ -44,6 +63,7 @@ def train_epoch(model,dataloader,optimizer,weight_l1,criterion,device):
 @torch.no_grad()
 def validate(model,dataloader,weight_l1,criterion,device):
     avg_loss = 0.0
+    avg_psnr = 0.0
     k = 0
     model.eval()
     with tqdm(dataloader,unit='batch',ncols=80,colour='green') as tepoch:
@@ -53,7 +73,11 @@ def validate(model,dataloader,weight_l1,criterion,device):
             bs = img_L.size(0)
             pred_q,soft_labels,out_ab,final_img = model(img_L,img_ab,img_mask)
             loss = compute_loss(pred_q,out_ab,soft_labels,img_ab,weight_l1,criterion)
+            true_imgs = torch.cat((img_L,img_ab),dim=1)  
+            psnr = eval_psnr(target_imgs=true_imgs,pred_imgs=final_img)
+            avg_psnr += psnr
             tepoch.set_postfix(loss=loss.item())
+            tepoch.set_postfix(psnr=psnr/bs)
             avg_loss+=loss.item()*bs
             k+=bs
-    return avg_loss/k
+    return avg_loss/k,avg_psnr/k
