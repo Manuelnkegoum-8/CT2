@@ -35,7 +35,7 @@ parser = argparse.ArgumentParser(description='Image Captioning on Flickr8k quick
 # Data args
 parser.add_argument('--data_path', default='./data', type=str, help='dataset path')
 parser.add_argument('-j', '--workers', default=2, type=int, metavar='N', help='number of data loading workers (default: 2)')
-parser.add_argument('--freq', default=10, type=int, metavar='N', help='log frequency (by iteration)')
+parser.add_argument('--freq', default=5, type=int, metavar='N', help='log frequency (by iteration)')
 
 # Model parameters
 parser.add_argument('--height', default=224, type=int, metavar='N', help='image height')
