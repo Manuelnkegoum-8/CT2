@@ -100,7 +100,7 @@ if __name__ == '__main__':
     global_rank = int(os.environ["RANK"])
     train_data, val_data = COCODataset(image_size=height,dataset_dir=data_location,split='train'), COCODataset(image_size=height,dataset_dir=data_location,split='val')
     train_sampler = DistributedSampler(train_data)
-    val_sampler = DistributedSampler(train_data)
+    val_sampler = DistributedSampler(val_data)
     train_loader = DataLoader(
                     dataset=train_data,
                     batch_size=batch_size,
@@ -113,7 +113,7 @@ if __name__ == '__main__':
                     batch_size=batch_size,
                     num_workers=args.workers,
                     shuffle=False,
-                    sampler=train_sampler
+                    sampler=val_sampler
                     )
 
     encoder = vit(height=height,
