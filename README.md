@@ -58,6 +58,29 @@ Download the pretrained vit model **google/vit-bae-patch16-224-ink21** in the ro
 
 I used two datastes to conduct my experiments [MS COCO 2017](https://paperswithcode.com/dataset/coco) and [Flickr30k](https://paperswithcode.com/paper/flickr30k-entities-collecting-region-to). The images were resized at the 224x224 resolution.
 
+<div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;">
+  <img src="results/gre1.jfif" alt="Image 1" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/gre2.jfif" alt="Image 2" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/gre3.jfif" alt="Image 3" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/gre4.jfif" alt="Image 4" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/gre5.jfif" alt="Image 5" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/gre6.jfif" alt="Image 11" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/gre7.jfif" alt="Image 12" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/gre8.jfif" alt="Image 13" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/gre9.jfif" alt="Image 14" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/gre10.jfif" alt="Image 15" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/1.png" alt="Image 6" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/2.png" alt="Image 7" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/3.png" alt="Image 8" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/4.png" alt="Image 9" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/5.png" alt="Image 10" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/6.png" alt="Image 16" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/7.png" alt="Image 17" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/8.png" alt="Image 18" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/9.png" alt="Image 19" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/10.png" alt="Image 20" style="width: 150px; height: 150px; object-fit: cover;">
+</div>
+
 
 ## Acknowledgements 🙏 
 

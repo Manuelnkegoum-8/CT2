@@ -35,7 +35,7 @@ parser = argparse.ArgumentParser(description='Image Captioning on Flickr8k quick
 # Data args
 parser.add_argument('--data_path', default='./data', type=str, help='dataset path')
 parser.add_argument('-j', '--workers', default=2, type=int, metavar='N', help='number of data loading workers (default: 2)')
-parser.add_argument('--freq', default=5, type=int, metavar='N', help='log frequency (by iteration)')
+parser.add_argument('--freq', default=10, type=int, metavar='N', help='log frequency (by iteration)')
 
 # Model parameters
 parser.add_argument('--height', default=224, type=int, metavar='N', help='image height')
@@ -56,7 +56,7 @@ parser.add_argument('--upsample', default=4, type=int, help='num_upsampling bloc
 
 
 # Optimization hyperparams
-parser.add_argument('--epochs', default=50, type=int, metavar='N', help='number of total epochs to run')
+parser.add_argument('--epochs', default=100, type=int, metavar='N', help='number of total epochs to run')
 parser.add_argument('--warmup', default=5, type=int, metavar='N', help='number of warmup epochs')
 parser.add_argument('-b', '--batch_size', default=4, type=int, metavar='N', help='mini-batch size (default: 128)', dest='batch_size')
 parser.add_argument('--lr', default=0.001, type=float, help='initial learning rate')
@@ -201,6 +201,7 @@ if __name__ == '__main__':
                             'optimizer_state_dict': optimizer.state_dict(),
                             'scheduler': scheduler.state_dict(),
                         }, f"ct2.pt")
+                sys.exit(42)
 
     destroy_process_group()
     if global_rank == 0 :

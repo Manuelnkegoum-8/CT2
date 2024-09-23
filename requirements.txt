@@ -9,6 +9,6 @@ pillow==10.3.0
 #requests==2.31.0
 scikit-image==0.23.2
 #torch==2.1.2
-torchvision
+#torchvision
 tqdm==4.66.2
 #transformers==4.35.2
