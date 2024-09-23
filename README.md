@@ -64,16 +64,16 @@ I used two datastes to conduct my experiments [MS COCO 2017](https://paperswithc
   <img src="results/gre3.jfif" alt="Image 3" style="width: 150px; height: 150px; object-fit: cover;">
   <img src="results/gre4.jfif" alt="Image 4" style="width: 150px; height: 150px; object-fit: cover;">
   <img src="results/gre5.jfif" alt="Image 5" style="width: 150px; height: 150px; object-fit: cover;">
-  <img src="results/gre6.jfif" alt="Image 11" style="width: 150px; height: 150px; object-fit: cover;">
-  <img src="results/gre7.jfif" alt="Image 12" style="width: 150px; height: 150px; object-fit: cover;">
-  <img src="results/gre8.jfif" alt="Image 13" style="width: 150px; height: 150px; object-fit: cover;">
-  <img src="results/gre9.jfif" alt="Image 14" style="width: 150px; height: 150px; object-fit: cover;">
-  <img src="results/gre10.jfif" alt="Image 15" style="width: 150px; height: 150px; object-fit: cover;">
   <img src="results/1.png" alt="Image 6" style="width: 150px; height: 150px; object-fit: cover;">
   <img src="results/2.png" alt="Image 7" style="width: 150px; height: 150px; object-fit: cover;">
   <img src="results/3.png" alt="Image 8" style="width: 150px; height: 150px; object-fit: cover;">
   <img src="results/4.png" alt="Image 9" style="width: 150px; height: 150px; object-fit: cover;">
   <img src="results/5.png" alt="Image 10" style="width: 150px; height: 150px; object-fit: cover;">
+ <img src="results/gre6.jfif" alt="Image 11" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/gre7.jfif" alt="Image 12" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/gre8.jfif" alt="Image 13" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/gre9.jfif" alt="Image 14" style="width: 150px; height: 150px; object-fit: cover;">
+  <img src="results/gre10.jfif" alt="Image 15" style="width: 150px; height: 150px; object-fit: cover;">
   <img src="results/6.png" alt="Image 16" style="width: 150px; height: 150px; object-fit: cover;">
   <img src="results/7.png" alt="Image 17" style="width: 150px; height: 150px; object-fit: cover;">
   <img src="results/8.png" alt="Image 18" style="width: 150px; height: 150px; object-fit: cover;">
